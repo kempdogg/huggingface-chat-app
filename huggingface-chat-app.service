@@ -1,0 +1,11 @@
+[Unit]
+Description=Huggingface Chat App
+After=default.target
+
+[Service]
+User=kali
+ExecStart=/usr/bin/python3 /home/kali/.local/share/applications/huggingface/main.py
+Restart=always
+
+[Install]
+WantedBy=default.target
