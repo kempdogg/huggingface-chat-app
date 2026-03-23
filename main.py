@@ -1,43 +1,43 @@
+import os
 import tkinter as tk
 from tkinter import messagebox
+
+# File initialization logic
+FILE_PATH = 'data.txt'  # The path to your data file
+try:
+    if not os.path.exists(FILE_PATH):
+        with open(FILE_PATH, 'w') as f:
+            f.write('')  # Initialize the file if it doesn't exist
+except Exception as e:
+    messagebox.showerror('File Error', f'Error initializing the file: {e}')
 
 class ChatApp:
     def __init__(self, master):
         self.master = master
-        self.master.title("Huggingface Chat App")
-        self.frame = tk.Frame(self.master)
-        self.frame.pack()
+        master.title('Chat Application')
 
-        self.text_area = tk.Text(self.frame, width=60, height=20, bg="gray", fg="white")
-        self.text_area.pack(side=tk.LEFT)
+        # GUI Layout - Widgets stacked vertically
+        self.label = tk.Label(master, text='Chat Application')
+        self.label.pack()  # Stack label at the top
 
-        self.input_field = tk.Entry(self.frame, width=40)
-        self.input_field.pack(side=tk.LEFT)
+        self.text_area = tk.Text(master, height=10, width=50)
+        self.text_area.pack()  # Stack text area next
 
-        self.send_button = tk.Button(self.frame, text="Send", command=self.send_message)
-        self.send_button.pack(side=tk.LEFT)
+        self.entry = tk.Entry(master)
+        self.entry.pack()  # Stack entry at the bottom
+
+        self.send_button = tk.Button(master, text='Send', command=self.send_message)
+        self.send_button.pack()  # Stack button below the entry
 
     def send_message(self):
-        message = self.input_field.get()
-        with open('models/conversations.txt', 'a') as f:
-            f.write(message + '\n')
-        self.text_area.insert(tk.END, "You: " + message + "\n")
-        self.input_field.delete(0, tk.END)
+        message = self.entry.get()
+        if message:
+            self.text_area.insert(tk.END, f'You: {message}\n')
+            self.entry.delete(0, tk.END)
+        else:
+            messagebox.showwarning('Input Error', 'Please enter a message.')
 
-class MainApp:
-    def __init__(self):
-        self.root = tk.Tk()
-        self.chat_app = ChatApp(self.root)
-        self.load_conversations()
-
-    def load_conversations(self):
-        with open('models/conversations.txt', 'r') as f:
-            conversation_text = f.read()
-        self.chat_app.text_area.insert(tk.END, conversation_text)
-
-    def run(self):
-        self.root.mainloop()
-
-if __name__ == "__main__":
-    app = MainApp()
-    app.run()
+if __name__ == '__main__':
+    root = tk.Tk()
+    app = ChatApp(root)
+    root.mainloop()
