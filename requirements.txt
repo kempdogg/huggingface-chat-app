@@ -1,19 +1,15 @@
 # Core Dependencies
-python-dotenv==1.0.0
-requests==2.31.0
+python-dotenv>=1.0.0
+requests>=2.31.0
 
 # Machine Learning & Model Loading
-torch==2.1.2
-transformers==4.36.0
-accelerate==0.25.0
+torch>=2.5.0
+transformers>=4.36.0
+accelerate>=0.25.0
 
 # Performance & Optimization
-numpy==1.26.3
-scipy==1.11.4
-
-# Optional: For better CPU performance
-# onnx==1.15.0
-# onnxruntime==1.17.0
+numpy>=1.26.3
+scipy>=1.11.4
 
 # Note: tkinter comes with Python on most systems
 # On Kali Linux, install with: sudo apt-get install python3-tk
