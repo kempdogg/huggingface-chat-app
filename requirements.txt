@@ -1,10 +1,10 @@
 # Core Dependencies
-python-dotenv==1.0.0
-requests==2.31.0
+python-dotenv==1.2.2
+requests==2.33.0
 
 # Machine Learning & Model Loading
-torch==2.1.2
-transformers==4.36.0
+torch==2.8.0
+transformers==5.0.0rc3
 accelerate==0.25.0
 
 # Performance & Optimization
