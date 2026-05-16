@@ -16,9 +16,9 @@ HF_TOKEN = os.getenv('HF_TOKEN', '')
 SKULL_CROSSBONES = """
     ☠️  ⚠️  DISCLAIMER ⚠️  ☠️
     
-    ═══════════════════════════════════
+    ═══════════════════════════════════════════
     ⚠️  USE AT YOUR OWN RISK  ⚠️
-    ═══════════════════════════════════
+    ═══════════════════════════════════════════
     
     The developer accepts NO responsibility
     for misuse and wrongful actions by this
@@ -30,11 +30,17 @@ SKULL_CROSSBONES = """
     Always review AI-generated content
     before using it in any context.
     
-    ═══════════════════════════════════
+    ═══════════════════════════════════════════
 """
 
 # Available 6B Parameter Models (CPU Optimized)
 AVAILABLE_MODELS = {
+    "Phi-2": {
+        "model_id": "microsoft/phi-2",
+        "description": "Microsoft's compact model - surprisingly powerful",
+        "size": "~5GB",
+        "ram": "~5GB"
+    },
     "OpenElm-6B": {
         "model_id": "apple/OpenELM-6B",
         "description": "Apple's efficient language model - great for general tasks",
@@ -46,12 +52,6 @@ AVAILABLE_MODELS = {
         "description": "Fast instruction-following model - excellent for tasks",
         "size": "~13GB",
         "ram": "~7GB"
-    },
-    "Phi-2": {
-        "model_id": "microsoft/phi-2",
-        "description": "Microsoft's compact model - surprisingly powerful",
-        "size": "~5GB",
-        "ram": "~5GB"
     },
     "Llama-2-7B": {
         "model_id": "meta-llama/Llama-2-7b-hf",
@@ -75,16 +75,16 @@ AVAILABLE_MODELS = {
 
 # Default pre-installed models
 DEFAULT_MODELS = [
-    "Phi-2",  # Smallest and fastest
-    "OpenElm-6B",  # Balanced performance
-    "Falcon-7B",  # Best for speed
+    "Phi-2",
+    "OpenElm-6B",
+    "Falcon-7B",
 ]
 
 class HuggingFaceChatApp:
     def __init__(self, root):
         self.root = root
         self.root.title("🤖 Hugging Face Chat App")
-        self.root.geometry("1000x750")
+        self.root.geometry("1100x850")
         self.root.configure(bg="#1e1e1e")
         
         # Chat history
@@ -98,6 +98,7 @@ class HuggingFaceChatApp:
         self.current_model = self.installed_models[0] if self.installed_models else None
         self.pipelines = {}
         self.loading = False
+        self.disclaimer_shown = False
         
         self.setup_ui()
         self.show_disclaimer_on_startup()
@@ -116,7 +117,7 @@ class HuggingFaceChatApp:
         title_label = tk.Label(
             header_frame,
             text="☠️  HUGGING FACE CHAT APP ☠️",
-            font=("Helvetica", 18, "bold"),
+            font=("Helvetica", 24, "bold"),
             bg="#2d2d2d",
             fg="#00ff00"
         )
@@ -125,7 +126,7 @@ class HuggingFaceChatApp:
         warning_label = tk.Label(
             header_frame,
             text="⚠️  USE AT YOUR OWN RISK - DEVELOPER ASSUMES NO LIABILITY  ⚠️",
-            font=("Helvetica", 10),
+            font=("Helvetica", 13),
             bg="#2d2d2d",
             fg="#ff6b6b"
         )
@@ -138,7 +139,7 @@ class HuggingFaceChatApp:
         model_label = tk.Label(
             model_frame,
             text="🤖 Select Model:",
-            font=("Helvetica", 11, "bold"),
+            font=("Helvetica", 14, "bold"),
             bg="#2d2d2d",
             fg="#00ff00"
         )
@@ -150,7 +151,7 @@ class HuggingFaceChatApp:
             textvariable=self.model_var,
             values=self.installed_models,
             state="readonly",
-            font=("Helvetica", 10),
+            font=("Helvetica", 12),
             width=25
         )
         self.model_dropdown.pack(side=tk.LEFT, padx=5)
@@ -160,12 +161,12 @@ class HuggingFaceChatApp:
             model_frame,
             text="ℹ️  Model Info",
             command=self.show_model_info,
-            font=("Helvetica", 10, "bold"),
+            font=("Helvetica", 11, "bold"),
             bg="#0099ff",
             fg="#ffffff",
             activebackground="#0088ee",
-            padx=10,
-            pady=5
+            padx=12,
+            pady=6
         )
         self.model_info_btn.pack(side=tk.LEFT, padx=5)
         
@@ -173,14 +174,51 @@ class HuggingFaceChatApp:
             model_frame,
             text="⚙️  Manage Models",
             command=self.show_manage_models,
-            font=("Helvetica", 10, "bold"),
+            font=("Helvetica", 11, "bold"),
             bg="#ff6b00",
             fg="#ffffff",
             activebackground="#ff5a00",
-            padx=10,
-            pady=5
+            padx=12,
+            pady=6
         )
         self.manage_models_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Custom Model Frame
+        custom_model_frame = tk.Frame(main_frame, bg="#2d2d2d")
+        custom_model_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        custom_label = tk.Label(
+            custom_model_frame,
+            text="🔧 Try Custom Model (HuggingFace ID):",
+            font=("Helvetica", 14, "bold"),
+            bg="#2d2d2d",
+            fg="#00ff00"
+        )
+        custom_label.pack(side=tk.LEFT, padx=5, pady=5)
+        
+        self.custom_model_entry = tk.Entry(
+            custom_model_frame,
+            font=("Helvetica", 12),
+            bg="#0d0d0d",
+            fg="#00ff00",
+            insertbackground="#00ff00",
+            width=35
+        )
+        self.custom_model_entry.pack(side=tk.LEFT, padx=5)
+        self.custom_model_entry.insert(0, "microsoft/phi-2")
+        
+        load_custom_btn = tk.Button(
+            custom_model_frame,
+            text="🚀 Load Custom",
+            command=self.load_custom_model,
+            font=("Helvetica", 11, "bold"),
+            bg="#00cc00",
+            fg="#000000",
+            activebackground="#00bb00",
+            padx=12,
+            pady=6
+        )
+        load_custom_btn.pack(side=tk.LEFT, padx=5)
         
         # Model description
         self.model_desc_var = tk.StringVar()
@@ -188,10 +226,10 @@ class HuggingFaceChatApp:
         desc_label = tk.Label(
             main_frame,
             textvariable=self.model_desc_var,
-            font=("Helvetica", 9),
+            font=("Helvetica", 11),
             bg="#1e1e1e",
-            fg="#888888",
-            wraplength=800
+            fg="#ffff00",
+            wraplength=1000
         )
         desc_label.pack(anchor="w", pady=(0, 10))
         
@@ -201,8 +239,8 @@ class HuggingFaceChatApp:
         
         chat_label = tk.Label(
             chat_frame,
-            text="Chat History:",
-            font=("Helvetica", 12, "bold"),
+            text="💬 Chat History:",
+            font=("Helvetica", 14, "bold"),
             bg="#2d2d2d",
             fg="#00ff00"
         )
@@ -212,7 +250,7 @@ class HuggingFaceChatApp:
             chat_frame,
             wrap=tk.WORD,
             height=12,
-            font=("Courier", 10),
+            font=("Courier", 13),
             bg="#0d0d0d",
             fg="#00ff00",
             insertbackground="#00ff00",
@@ -225,8 +263,8 @@ class HuggingFaceChatApp:
         # Input area
         input_label = tk.Label(
             main_frame,
-            text="Your Message:",
-            font=("Helvetica", 11, "bold"),
+            text="📝 Your Message:",
+            font=("Helvetica", 14, "bold"),
             bg="#1e1e1e",
             fg="#00ff00"
         )
@@ -235,8 +273,8 @@ class HuggingFaceChatApp:
         self.input_text = scrolledtext.ScrolledText(
             main_frame,
             wrap=tk.WORD,
-            height=3,
-            font=("Courier", 10),
+            height=4,
+            font=("Courier", 13),
             bg="#0d0d0d",
             fg="#00ff00",
             insertbackground="#00ff00",
@@ -253,13 +291,13 @@ class HuggingFaceChatApp:
             button_frame,
             text="💬 SEND CHAT",
             command=self.send_message,
-            font=("Helvetica", 11, "bold"),
+            font=("Helvetica", 12, "bold"),
             bg="#00ff00",
             fg="#000000",
             activebackground="#00dd00",
             relief=tk.RAISED,
             padx=20,
-            pady=8
+            pady=10
         )
         send_btn.pack(side=tk.LEFT, padx=5)
         
@@ -267,13 +305,13 @@ class HuggingFaceChatApp:
             button_frame,
             text="🗑️  CLEAR CHAT",
             command=self.clear_chat,
-            font=("Helvetica", 11, "bold"),
+            font=("Helvetica", 12, "bold"),
             bg="#ff6b6b",
             fg="#ffffff",
             activebackground="#ff5555",
             relief=tk.RAISED,
             padx=20,
-            pady=8
+            pady=10
         )
         clear_btn.pack(side=tk.LEFT, padx=5)
         
@@ -281,13 +319,13 @@ class HuggingFaceChatApp:
             button_frame,
             text="⚠️  VIEW DISCLAIMER",
             command=self.show_disclaimer,
-            font=("Helvetica", 11, "bold"),
+            font=("Helvetica", 12, "bold"),
             bg="#ffa500",
             fg="#000000",
             activebackground="#ff9500",
             relief=tk.RAISED,
             padx=20,
-            pady=8
+            pady=10
         )
         disclaimer_btn.pack(side=tk.LEFT, padx=5)
         
@@ -296,7 +334,7 @@ class HuggingFaceChatApp:
         status_bar = tk.Label(
             main_frame,
             textvariable=self.status_var,
-            font=("Helvetica", 9),
+            font=("Helvetica", 11),
             bg="#2d2d2d",
             fg="#888888",
             relief=tk.SUNKEN,
@@ -313,13 +351,33 @@ class HuggingFaceChatApp:
             desc = f"📊 {model_info['description']} | Size: {model_info['size']} | RAM: {model_info['ram']}"
             self.model_desc_var.set(desc)
         else:
-            self.model_desc_var.set("No model selected - Install models using 'Manage Models' button")
+            self.model_desc_var.set("No model selected - Install models using 'Manage Models' button or load a custom model")
     
     def on_model_change(self, event):
         """Handle model selection change"""
         self.current_model = self.model_var.get()
         self.update_model_description()
         self.status_var.set(f"Model switched to: {self.current_model}")
+    
+    def load_custom_model(self):
+        """Load a custom model from HuggingFace"""
+        custom_id = self.custom_model_entry.get().strip()
+        
+        if not custom_id:
+            messagebox.showwarning("Empty Model ID", "Please enter a valid HuggingFace model ID")
+            return
+        
+        self.current_model = custom_id
+        self.model_var.set(custom_id)
+        
+        # Update description
+        if custom_id in AVAILABLE_MODELS:
+            self.update_model_description()
+        else:
+            self.model_desc_var.set(f"Custom Model: {custom_id} (Loading...)")
+        
+        self.status_var.set(f"Custom model selected: {custom_id}")
+        messagebox.showinfo("Custom Model Selected", f"Model '{custom_id}' will be downloaded on first use.\n\nNote: This may take 5-30 minutes depending on model size.")
     
     def show_model_info(self):
         """Show detailed info about current model"""
@@ -328,7 +386,8 @@ class HuggingFaceChatApp:
             return
         
         model_info = AVAILABLE_MODELS.get(self.current_model, {})
-        info_text = f"""
+        if model_info:
+            info_text = f"""
 Model: {self.current_model}
 Model ID: {model_info.get('model_id', 'N/A')}
 
@@ -338,25 +397,28 @@ Description:
 Specifications:
 • Model Size: {model_info.get('size', 'N/A')}
 • RAM Required: {model_info.get('ram', 'N/A')}
-• Type: 6B Parameter Models
+• Type: 6B-7B Parameter Models
 • Optimization: CPU-optimized
 
 Status: Downloaded and ready to use
-        """
+            """
+        else:
+            info_text = f"Custom Model: {self.current_model}\n\nThis is a custom model loaded from HuggingFace."
+        
         messagebox.showinfo(f"Model Info - {self.current_model}", info_text)
     
     def show_manage_models(self):
         """Show dialog to manage installed models"""
         manage_window = tk.Toplevel(self.root)
         manage_window.title("🤖 Manage Models")
-        manage_window.geometry("600x500")
+        manage_window.geometry("700x600")
         manage_window.configure(bg="#1e1e1e")
         
         # Instructions
         instr_label = tk.Label(
             manage_window,
             text="Select 6B parameter models to pre-install:",
-            font=("Helvetica", 11, "bold"),
+            font=("Helvetica", 13, "bold"),
             bg="#1e1e1e",
             fg="#00ff00"
         )
@@ -368,27 +430,36 @@ Status: Downloaded and ready to use
         models_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         for model_name, model_info in AVAILABLE_MODELS.items():
-            frame = tk.Frame(models_frame, bg="#2d2d2d", relief=tk.SUNKEN, borderwidth=1)
-            frame.pack(fill=tk.X, pady=5, padx=5)
+            frame = tk.Frame(models_frame, bg="#2d2d2d", relief=tk.SUNKEN, borderwidth=2)
+            frame.pack(fill=tk.X, pady=7, padx=5)
             
             var = tk.BooleanVar(value=model_name in self.installed_models)
             self.model_vars[model_name] = var
             
             cb = tk.Checkbutton(
                 frame,
-                text=f"  {model_name} - {model_info['description']}",
+                text=f"  {model_name}",
                 variable=var,
-                font=("Helvetica", 10),
+                font=("Helvetica", 12, "bold"),
                 bg="#2d2d2d",
                 fg="#00ff00",
                 selectcolor="#1e1e1e"
             )
             cb.pack(anchor="w", padx=10, pady=5)
             
+            desc_label = tk.Label(
+                frame,
+                text=f"     {model_info['description']}",
+                font=("Helvetica", 11),
+                bg="#2d2d2d",
+                fg="#ffff00"
+            )
+            desc_label.pack(anchor="w", padx=20)
+            
             details_label = tk.Label(
                 frame,
                 text=f"     Size: {model_info['size']} | RAM: {model_info['ram']}",
-                font=("Helvetica", 8),
+                font=("Helvetica", 10),
                 bg="#2d2d2d",
                 fg="#888888"
             )
@@ -402,11 +473,11 @@ Status: Downloaded and ready to use
             button_frame,
             text="💾 SAVE & INSTALL",
             command=lambda: self.save_model_config(manage_window),
-            font=("Helvetica", 11, "bold"),
+            font=("Helvetica", 12, "bold"),
             bg="#00ff00",
             fg="#000000",
             padx=20,
-            pady=8
+            pady=10
         )
         save_btn.pack(side=tk.LEFT, padx=5)
         
@@ -414,11 +485,11 @@ Status: Downloaded and ready to use
             button_frame,
             text="❌ CANCEL",
             command=manage_window.destroy,
-            font=("Helvetica", 11, "bold"),
+            font=("Helvetica", 12, "bold"),
             bg="#ff6b6b",
             fg="#ffffff",
             padx=20,
-            pady=8
+            pady=10
         )
         cancel_btn.pack(side=tk.LEFT, padx=5)
     
@@ -471,13 +542,15 @@ Status: Downloaded and ready to use
             self.status_var.set(f"Loading {self.current_model}... This may take a moment")
             self.root.update()
             
-            model_id = AVAILABLE_MODELS[self.current_model]["model_id"]
+            model_id = self.current_model
+            if self.current_model in AVAILABLE_MODELS:
+                model_id = AVAILABLE_MODELS[self.current_model]["model_id"]
             
             # Load pipeline for text generation
             self.pipelines[self.current_model] = pipeline(
                 "text-generation",
                 model=model_id,
-                device=-1,  # CPU only
+                device=-1,
                 torch_dtype="auto",
                 token=HF_TOKEN if HF_TOKEN else None
             )
@@ -532,14 +605,17 @@ Status: Downloaded and ready to use
             messagebox.showwarning("Empty Message", "Please enter a message before sending.")
             return
         
-        # Show disclaimer
-        response = messagebox.askyesno(
-            "⚠️  CONFIRM - DISCLAIMER ⚠️",
-            SKULL_CROSSBONES + "\n\nDo you accept these terms and wish to continue?"
-        )
-        
-        if not response:
-            return
+        # Show disclaimer only once per session
+        if not self.disclaimer_shown:
+            response = messagebox.askyesno(
+                "⚠️  CONFIRM - DISCLAIMER ⚠️",
+                SKULL_CROSSBONES + "\n\nDo you accept these terms and wish to continue?"
+            )
+            
+            if not response:
+                return
+            
+            self.disclaimer_shown = True
         
         # Add user message
         self.chat_history.append({
@@ -589,8 +665,8 @@ Status: Downloaded and ready to use
                 self.chat_display.insert(tk.END, f"[{timestamp}] {model}: ", "assistant")
                 self.chat_display.insert(tk.END, f"{message['content']}\n\n")
         
-        self.chat_display.tag_config("user", foreground="#00ff00", font=("Courier", 10, "bold"))
-        self.chat_display.tag_config("assistant", foreground="#ffaa00", font=("Courier", 10, "bold"))
+        self.chat_display.tag_config("user", foreground="#00ff00", font=("Courier", 13, "bold"))
+        self.chat_display.tag_config("assistant", foreground="#ffaa00", font=("Courier", 13, "bold"))
         self.chat_display.see(tk.END)
         self.chat_display.config(state=tk.DISABLED)
     
