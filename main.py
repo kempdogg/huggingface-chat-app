@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 import os
 import tkinter as tk
-from tkinter import scrolledtext, messagebox, ttk, simpledialog
+from tkinter import scrolledtext, messagebox, ttk, simpledialog, filedialog
 from dotenv import load_dotenv
 import json
 from datetime import datetime
 from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 import threading
+from openai import OpenAI
+from PIL import Image, ImageTk
+import io
+import base64
+from urllib.parse import urlparse
 
 load_dotenv()
 
@@ -71,6 +76,13 @@ AVAILABLE_MODELS = {
         "size": "~13GB",
         "ram": "~7GB"
     },
+    "GLM-4.5V": {
+        "model_id": "zai-org/GLM-4.5V:novita",
+        "description": "Multi-modal vision+text model - analyze images with AI",
+        "size": "~10GB",
+        "ram": "~8GB",
+        "is_multimodal": True
+    }
 }
 
 # Default pre-installed models
@@ -84,7 +96,7 @@ class HuggingFaceChatApp:
     def __init__(self, root):
         self.root = root
         self.root.title("🤖 Hugging Face Chat App")
-        self.root.geometry("1100x850")
+        self.root.geometry("1300x950")
         self.root.configure(bg="#1e1e1e")
         
         # Chat history
@@ -99,6 +111,17 @@ class HuggingFaceChatApp:
         self.pipelines = {}
         self.loading = False
         self.disclaimer_shown = False
+        self.current_image = None
+        self.current_image_url = None
+        self.openai_client = None
+        self.photo_ref = None  # Keep reference to prevent garbage collection
+        
+        # Initialize OpenAI client for HF router
+        if HF_TOKEN:
+            self.openai_client = OpenAI(
+                base_url="https://router.huggingface.co/v1",
+                api_key=HF_TOKEN,
+            )
         
         self.setup_ui()
         self.show_disclaimer_on_startup()
@@ -233,9 +256,13 @@ class HuggingFaceChatApp:
         )
         desc_label.pack(anchor="w", pady=(0, 10))
         
+        # Content frame (chat + image side by side)
+        content_frame = tk.Frame(main_frame, bg="#1e1e1e")
+        content_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
         # Chat display area
-        chat_frame = tk.Frame(main_frame, bg="#2d2d2d")
-        chat_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        chat_frame = tk.Frame(content_frame, bg="#2d2d2d")
+        chat_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
         
         chat_label = tk.Label(
             chat_frame,
@@ -250,7 +277,7 @@ class HuggingFaceChatApp:
             chat_frame,
             wrap=tk.WORD,
             height=12,
-            font=("Courier", 13),
+            font=("Courier", 11),
             bg="#0d0d0d",
             fg="#00ff00",
             insertbackground="#00ff00",
@@ -259,6 +286,76 @@ class HuggingFaceChatApp:
         )
         self.chat_display.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.chat_display.config(state=tk.DISABLED)
+        
+        # Image display area
+        image_frame = tk.Frame(content_frame, bg="#2d2d2d", width=300)
+        image_frame.pack(side=tk.RIGHT, fill=tk.BOTH, padx=(5, 0))
+        image_frame.pack_propagate(False)
+        
+        image_label = tk.Label(
+            image_frame,
+            text="🖼️  Image Preview:",
+            font=("Helvetica", 14, "bold"),
+            bg="#2d2d2d",
+            fg="#00ff00"
+        )
+        image_label.pack(anchor="w", padx=5, pady=5)
+        
+        self.image_display = tk.Label(
+            image_frame,
+            bg="#0d0d0d",
+            fg="#888888",
+            text="No image loaded",
+            font=("Courier", 11),
+            relief=tk.SUNKEN,
+            borderwidth=2,
+            width=35,
+            height=15
+        )
+        self.image_display.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Image button frame
+        img_btn_frame = tk.Frame(image_frame, bg="#2d2d2d")
+        img_btn_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        upload_img_btn = tk.Button(
+            img_btn_frame,
+            text="📁 Upload",
+            command=self.upload_image,
+            font=("Helvetica", 9, "bold"),
+            bg="#00aa88",
+            fg="#ffffff",
+            activebackground="#009977",
+            padx=8,
+            pady=4
+        )
+        upload_img_btn.pack(side=tk.LEFT, padx=2, fill=tk.X, expand=True)
+        
+        url_img_btn = tk.Button(
+            img_btn_frame,
+            text="🔗 URL",
+            command=self.load_image_url,
+            font=("Helvetica", 9, "bold"),
+            bg="#0088aa",
+            fg="#ffffff",
+            activebackground="#007799",
+            padx=8,
+            pady=4
+        )
+        url_img_btn.pack(side=tk.LEFT, padx=2, fill=tk.X, expand=True)
+        
+        clear_img_btn = tk.Button(
+            img_btn_frame,
+            text="❌ Clear",
+            command=self.clear_image,
+            font=("Helvetica", 9, "bold"),
+            bg="#aa0000",
+            fg="#ffffff",
+            activebackground="#990000",
+            padx=8,
+            pady=4
+        )
+        clear_img_btn.pack(side=tk.LEFT, padx=2, fill=tk.X, expand=True)
         
         # Input area
         input_label = tk.Label(
@@ -274,7 +371,7 @@ class HuggingFaceChatApp:
             main_frame,
             wrap=tk.WORD,
             height=4,
-            font=("Courier", 13),
+            font=("Courier", 12),
             bg="#0d0d0d",
             fg="#00ff00",
             insertbackground="#00ff00",
@@ -343,7 +440,61 @@ class HuggingFaceChatApp:
         status_bar.pack(fill=tk.X, pady=(10, 0))
         
         self.refresh_chat_display()
+    
+    def upload_image(self):
+        """Upload image from local file"""
+        file_path = filedialog.askopenfilename(
+            title="Select an image",
+            filetypes=[("Image files", "*.jpg *.jpeg *.png *.gif *.bmp"), ("All files", "*.*")]
+        )
         
+        if file_path:
+            try:
+                img = Image.open(file_path)
+                self.current_image = img
+                self.current_image_url = None
+                self.display_image_preview(img)
+                self.status_var.set(f"Image loaded: {os.path.basename(file_path)}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load image: {str(e)}")
+    
+    def load_image_url(self):
+        """Load image from URL"""
+        url = simpledialog.askstring("Image URL", "Enter image URL:")
+        
+        if url:
+            try:
+                import requests
+                response = requests.get(url, timeout=10)
+                img = Image.open(io.BytesIO(response.content))
+                self.current_image = None
+                self.current_image_url = url
+                self.display_image_preview(img)
+                self.status_var.set(f"Image loaded from URL")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load image from URL: {str(e)}")
+    
+    def display_image_preview(self, img):
+        """Display image preview in the UI"""
+        try:
+            # Resize image to fit in preview area
+            img.thumbnail((280, 280), Image.Resampling.LANCZOS)
+            
+            # Convert to PhotoImage
+            self.photo_ref = ImageTk.PhotoImage(img)
+            
+            self.image_display.config(image=self.photo_ref, text="")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to display image: {str(e)}")
+    
+    def clear_image(self):
+        """Clear the loaded image"""
+        self.current_image = None
+        self.current_image_url = None
+        self.image_display.config(image="", text="No image loaded")
+        self.photo_ref = None
+        self.status_var.set("Image cleared")
+    
     def update_model_description(self):
         """Update model description label"""
         if self.current_model and self.current_model in AVAILABLE_MODELS:
@@ -387,6 +538,7 @@ class HuggingFaceChatApp:
         
         model_info = AVAILABLE_MODELS.get(self.current_model, {})
         if model_info:
+            multimodal_text = "Yes (Vision+Text)" if model_info.get('is_multimodal') else "No (Text only)"
             info_text = f"""
 Model: {self.current_model}
 Model ID: {model_info.get('model_id', 'N/A')}
@@ -399,6 +551,7 @@ Specifications:
 • RAM Required: {model_info.get('ram', 'N/A')}
 • Type: 6B-7B Parameter Models
 • Optimization: CPU-optimized
+• Multi-modal: {multimodal_text}
 
 Status: Downloaded and ready to use
             """
@@ -563,8 +716,8 @@ Status: Downloaded and ready to use
             messagebox.showerror("Model Loading Error", error_msg)
             return False
     
-    def generate_response(self, prompt):
-        """Generate response using the loaded model"""
+    def generate_response_local(self, prompt):
+        """Generate response using the loaded model (local)"""
         if not self.current_model:
             return "Error: No model selected"
         
@@ -592,6 +745,76 @@ Status: Downloaded and ready to use
             return response
         except Exception as e:
             return f"Error generating response: {str(e)}"
+    
+    def generate_response_multimodal(self, text_prompt):
+        """Generate response using HF router API with streaming (supports images)"""
+        if not self.openai_client:
+            return "Error: HF_TOKEN not configured. Set HF_TOKEN in .env file for multi-modal support."
+        
+        try:
+            self.status_var.set("Generating multi-modal response... (streaming)")
+            self.root.update()
+            
+            # Build message content
+            content = [
+                {
+                    "type": "text",
+                    "text": text_prompt
+                }
+            ]
+            
+            # Add image if present
+            if self.current_image_url:
+                content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": self.current_image_url
+                    }
+                })
+            elif self.current_image:
+                # Convert PIL Image to base64
+                buffered = io.BytesIO()
+                self.current_image.save(buffered, format="PNG")
+                img_base64 = base64.b64encode(buffered.getvalue()).decode()
+                content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{img_base64}"
+                    }
+                })
+            
+            # Stream the response
+            response_text = ""
+            stream = self.openai_client.chat.completions.create(
+                model="zai-org/GLM-4.5V:novita",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content
+                    }
+                ],
+                stream=True,
+                temperature=0.7,
+                top_p=0.9,
+                max_tokens=500
+            )
+            
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    response_text += chunk.choices[0].delta.content
+            
+            self.status_var.set("Multi-modal response generated")
+            return response_text if response_text else "No response received from model."
+        
+        except Exception as e:
+            return f"Error generating multi-modal response: {str(e)}"
+    
+    def generate_response(self, prompt):
+        """Generate response - uses local or multi-modal based on model"""
+        if self.current_model in AVAILABLE_MODELS and AVAILABLE_MODELS[self.current_model].get('is_multimodal'):
+            return self.generate_response_multimodal(prompt)
+        else:
+            return self.generate_response_local(prompt)
     
     def send_message(self):
         """Send message and get response"""
@@ -622,7 +845,8 @@ Status: Downloaded and ready to use
             "role": "user",
             "content": user_input,
             "timestamp": datetime.now().isoformat(),
-            "model": self.current_model
+            "model": self.current_model,
+            "has_image": self.current_image is not None or self.current_image_url is not None
         })
         
         # Generate response in a thread to avoid freezing UI
@@ -655,18 +879,20 @@ Status: Downloaded and ready to use
         for message in self.chat_history:
             timestamp = message.get("timestamp", "")
             model = message.get("model", "")
+            has_image = message.get("has_image", False)
             if timestamp:
                 timestamp = timestamp.split("T")[1][:5]
             
             if message["role"] == "user":
-                self.chat_display.insert(tk.END, f"[{timestamp}] YOU: ", "user")
+                img_indicator = " 🖼️ " if has_image else " "
+                self.chat_display.insert(tk.END, f"[{timestamp}] YOU:{img_indicator}", "user")
                 self.chat_display.insert(tk.END, f"{message['content']}\n\n")
             else:
                 self.chat_display.insert(tk.END, f"[{timestamp}] {model}: ", "assistant")
                 self.chat_display.insert(tk.END, f"{message['content']}\n\n")
         
-        self.chat_display.tag_config("user", foreground="#00ff00", font=("Courier", 13, "bold"))
-        self.chat_display.tag_config("assistant", foreground="#ffaa00", font=("Courier", 13, "bold"))
+        self.chat_display.tag_config("user", foreground="#00ff00", font=("Courier", 11, "bold"))
+        self.chat_display.tag_config("assistant", foreground="#ffaa00", font=("Courier", 11, "bold"))
         self.chat_display.see(tk.END)
         self.chat_display.config(state=tk.DISABLED)
     
