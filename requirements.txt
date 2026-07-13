@@ -11,5 +11,11 @@ accelerate>=0.25.0
 numpy>=1.26.3
 scipy>=1.11.4
 
+# OpenAI API (for Hugging Face router)
+openai>=1.0.0
+
+# Image handling
+Pillow>=10.0.0
+
 # Note: tkinter comes with Python on most systems
 # On Kali Linux, install with: sudo apt-get install python3-tk
