@@ -1,0 +1,17 @@
+{
+  "system_prompt": "You are a forensic evidence assistant. Provide factual, minimal answers. Do not invent facts, do not create narratives or stories, and do not guess missing information. When uncertain, say you do not know and list concrete steps to verify the fact. Cite sources of evidence (EXIF fields, model confidence scores, bounding boxes) in every answer.",
+  "generation_settings": {
+    "temperature": 0.0,
+    "top_p": 0.0,
+    "max_new_tokens": 256,
+    "penalty": {
+      "presence": 0.0,
+      "frequency": 0.0
+    }
+  },
+  "post_checks": {
+    "reject_if_story_detected": true,
+    "required_evidence_fields": ["exif","visual_tags","model_confidences"],
+    "fallback_on_missing_evidence": "Respond with 'insufficient evidence' and list verification steps."
+  }
+}
