@@ -1,26 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# setup.sh - Set up virtualenv, install deps, and auto-download models listed in models_config.json
-# Usage: ./setup.sh
+# Optional standalone setup entry point. Installs the Python requirements into
+# a virtual environment and downloads selected models immediately.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+VENV_DIR="$SCRIPT_DIR/.venv"
 
-PYTHON_BIN=${PYTHON_BIN:-python3}
-VENV_DIR=".venv"
+"$PYTHON_BIN" -m venv "$VENV_DIR"
+"$VENV_DIR/bin/python" -m pip install --upgrade pip
+"$VENV_DIR/bin/python" -m pip install -r "$SCRIPT_DIR/requirements.txt"
 
-# 1) create virtualenv
-$PYTHON_BIN -m venv "$VENV_DIR" || true
-. "$VENV_DIR/bin/activate"
-
-pip install --upgrade pip
-if [ -f requirements.txt ]; then
-  pip install -r requirements.txt || pip install huggingface_hub llama-cpp-python
-else
-  pip install huggingface_hub llama-cpp-python
+if [ ! -f "$SCRIPT_DIR/.env" ] && [ -f "$SCRIPT_DIR/.env.example" ]; then
+    cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
 fi
 
-# 2) run the python setup installer which downloads models and updates configs
-python3 scripts/setup_install.py
-
-echo "Setup complete. Models (if auto_install=true) should be in ./models/* and models_config.json updated with local_path entries."
-
-echo "Next: edit .env if you want to override MODEL_PATH_<key> entries, then run: python3 main.py"
+"$VENV_DIR/bin/python" "$SCRIPT_DIR/scripts/setup_install.py"
+echo "Setup complete. Launch with: $VENV_DIR/bin/python $SCRIPT_DIR/main.py"

@@ -1,6 +1,7 @@
 # Core Dependencies
 python-dotenv>=1.0.0
 requests>=2.31.0
+huggingface_hub>=0.24.0
 
 # Machine Learning & Model Loading
 torch>=2.5.0
