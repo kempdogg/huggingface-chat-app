@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install dependencies, download models marked auto_install in models_config.json,
-# and create a one-command launcher.
+# Install dependencies, download models selected in models_config.json, and
+# create one-command launchers for the app and model manager.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_COMMAND="/usr/local/bin/huggingface-chat-app"
+MODELS_COMMAND="/usr/local/bin/huggingface-chat-models"
 
 printf '%s\n' "╔════════════════════════════════════════════════════════╗" \
   "║   Hugging Face Chat App - Kali Linux Setup             ║" \
@@ -19,9 +20,6 @@ fi
 
 sudo apt-get update
 sudo apt-get install -y python3-tk python3-pip python3-dev build-essential git
-
-# Debian/Kali may mark the system Python as externally managed. Use the requested
-# flag so pip can install the requirements instead of failing with that error.
 python3 -m pip install --break-system-packages --upgrade pip setuptools wheel
 python3 -m pip install --break-system-packages -r "$SCRIPT_DIR/requirements.txt"
 
@@ -33,7 +31,6 @@ HF_TOKEN=
 HUGGINGFACE_API_KEY=
 EOF
 fi
-
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
     echo "Created .env. Add HF_TOKEN there if any selected model is gated."
@@ -53,21 +50,28 @@ except ImportError as exc:
 print(f"Python {sys.version.split()[0]} and application dependencies are available.")
 PYEOF
 
-# Download all models selected with auto_install=true before setup is complete.
-echo "Downloading selected Hugging Face models (this may take a long time)..."
+# Installation does not complete until every selected GGUF model is downloaded.
+echo "Downloading selected Hugging Face GGUF models. This can take a long time..."
 python3 "$SCRIPT_DIR/scripts/setup_install.py"
 
 chmod +x "$SCRIPT_DIR/main.py"
-launcher="$(mktemp)"
-trap 'rm -f "$launcher"' EXIT
-cat > "$launcher" <<EOF
+for command_path in "$APP_COMMAND" "$MODELS_COMMAND"; do
+    launcher="$(mktemp)"
+    if [ "$command_path" = "$APP_COMMAND" ]; then
+        target="$SCRIPT_DIR/main.py"
+    else
+        target="$SCRIPT_DIR/scripts/model_manager.py"
+    fi
+    cat > "$launcher" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$SCRIPT_DIR"
-exec python3 "$SCRIPT_DIR/main.py" "\$@"
+exec python3 "$target" "\$@"
 EOF
-sudo install -m 755 "$launcher" "$APP_COMMAND"
+    sudo install -m 755 "$launcher" "$command_path"
+    rm -f "$launcher"
+done
 
-printf '\nInstallation complete. Start the app with: huggingface-chat-app\n'
+printf '\nInstallation complete. Launch the app with: huggingface-chat-app\n'
+printf 'Manage/download GGUF models with: huggingface-chat-models\n'
 printf 'Configure an optional Hugging Face token in: %s/.env\n' "$SCRIPT_DIR"
-printf 'Models marked auto_install=true in models_config.json have been downloaded.\n'

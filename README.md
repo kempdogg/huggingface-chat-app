@@ -1,6 +1,6 @@
 # 🤖 Hugging Face Chat App
 
-**An interactive GUI for running AI models locally.**
+A graphical chat app for working with AI models, plus a simple GUI for selecting and downloading GGUF models from Hugging Face.
 
 ## Quick start (Kali Linux / Debian)
 
@@ -11,22 +11,19 @@ chmod +x install.sh
 ./install.sh
 ```
 
-The installer installs the Python dependencies, downloads every model marked `auto_install: true` in `models_config.json`, and installs a `huggingface-chat-app` command. Start the application with:
+The installer installs the Python dependencies, downloads every model marked `auto_install: true` in `models_config.json`, and installs two commands:
 
-```bash
-huggingface-chat-app
-```
+- `huggingface-chat-app` — launch the chat application.
+- `huggingface-chat-models` — open the friendly GGUF model manager.
 
-Model files can be several gigabytes each, so allow time and disk space for the initial download. If a selected model is gated, put an authorized Hugging Face access token in `.env` as `HF_TOKEN=...` and rerun `./install.sh`. To choose a particular GGUF file from a repository containing several, set its `filename` in `models_config.json`; when it is `null`, setup downloads the first GGUF filename listed by Hugging Face.
+The model manager lets you browse GGUF models on Hugging Face, paste a model page URL or `owner/model` ID, choose which models should be downloaded, and start the download. Newly added models are selected for download by default. Downloaded model files may be several GB each, so allow enough time and disk space.
 
-The installer uses pip's `--break-system-packages` option for Debian/Kali's externally-managed system Python. The standalone `setup.sh` alternative installs Python dependencies into `.venv` and downloads the same selected models.
+If a selected model is gated, add an authorized Hugging Face access token to the project `.env` file as `HF_TOKEN=...`. To pick a specific GGUF file from a repository with multiple files, enter the filename in the model manager before adding the repository. If left blank, setup downloads the first `.gguf` file listed by Hugging Face.
 
-## Configuration
-
-The model download list is `models_config.json`. Models with `auto_install: true` are downloaded during setup into `models/`; set it to `false` to skip a model. An optional Hugging Face token is read from `.env` for gated repositories.
+The installer uses pip's `--break-system-packages` option for Debian/Kali's externally managed system Python. The standalone `setup.sh` alternative installs Python dependencies into `.venv` and downloads the models selected in `models_config.json`.
 
 ## Notes
 
 - Install Tkinter on Debian/Kali with `sudo apt-get install python3-tk` if it is missing.
-- Model downloads require an internet connection and enough free storage.
-- Review model licenses and use the models in accordance with their terms.
+- Downloads require an internet connection and enough free storage.
+- Review model licenses and use models in accordance with their terms.
