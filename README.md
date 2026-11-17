@@ -1,279 +1,95 @@
 # 🤖 Hugging Face Chat App
 
-**An interactive GUI for running 6B parameter AI models locally on Kali Linux with no GPU needed**
+A Tkinter desktop chat app for Hugging Face Transformers models, with optional Hugging Face router support and GGUF download/loading utilities.
 
-![Version](https://img.shields.io/badge/version-2.0-brightgreen)
-![Python](https://img.shields.io/badge/python-3.8+-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+## Requirements
 
-## ⚠️ Disclaimer
+- Python 3.9 or newer
+- Kali/Debian: `python3-tk`, `python3-venv` (for the virtual environment path), `python3-dev`, and `build-essential`
+- Disk and memory appropriate for the model you choose; model downloads can be many gigabytes
 
-**The developer accepts NO responsibility for misuse and wrongful actions by this tool.**
-Users are solely responsible for ensuring their use complies with all applicable laws and terms of service.
+## Install
 
----
+Choose one installation path:
 
-## 🎯 Features
+### Kali/Debian system install
 
-✅ **6 Pre-Configured 6B Parameter Models** (CPU-optimized)
-✅ **Choose Your Own Models** - Install only what you need
-✅ **Local Inference** - No external API calls, full privacy
-✅ **Interactive GUI** - Dark theme with neon styling
-✅ **Chat History** - Auto-saves all conversations
-✅ **Model Management** - Easy model selection and configuration
-✅ **Kali Linux Optimized** - Works with `python3-tk` from apt
-✅ **Threading** - Responsive UI during model inference
+`install.sh` installs Python dependencies into the system interpreter. On Kali it always supplies `--break-system-packages` to pip as requested. This overrides the OS package manager's protection, so the isolated environment below is the safer option for most users.
 
----
-
-## 🤖 Available 6B Parameter Models
-
-| Model | Size | RAM | Speed | Best For |
-|-------|------|-----|-------|----------|
-| **Phi-2** (Microsoft) | 5GB | 5GB | ⚡⚡⚡ Fastest | General purpose, fast responses |
-| **OpenElm-6B** (Apple) | 12GB | 6GB | ⚡⚡ Fast | Efficient, balanced |
-| **Falcon-7B** (UAE) | 13GB | 7GB | ⚡⚡ Fast | High quality output |
-| **Mistral-7B-Instruct** | 13GB | 7GB | ⚡⚡ Fast | Instruction following |
-| **Llama-2-7B** (Meta) | 13GB | 7GB | ⚡ Medium | Solid general purpose |
-| **MPT-7B** (MosaicML) | 13GB | 7GB | ⚡ Medium | Long context |
-
----
-
-## 🚀 Quick Start (Kali Linux)
-
-### Prerequisites
-- Python 3.8+
-- 8GB+ RAM (16GB+ recommended)
-- 50GB+ free disk space (for models)
-
-### Installation
-
-**Option 1: Automated (Recommended)**
 ```bash
-git clone https://github.com/kempdogg/huggingface-chat-app.git
-cd huggingface-chat-app
+sudo apt-get update
+sudo apt-get install -y python3-tk python3-pip python3-dev build-essential
 chmod +x install.sh
 ./install.sh
 ```
 
-**Option 2: Manual**
+Manual Kali pip installation must use the same option:
+
 ```bash
-# Install system dependencies
+pip3 install --break-system-packages -r requirements.txt
+```
+
+`--break-system-packages` is a pip command-line option, not a package requirement, so it belongs in the install command/script rather than as a line in `requirements.txt`.
+
+### Virtual environment and GGUF setup
+
+This path keeps Python packages isolated. `setup.sh` creates `.venv`, installs the requirements and runs the configured GGUF model downloader. On Kali it also passes the requested pip option to its pip commands.
+
+```bash
 sudo apt-get update
-sudo apt-get install python3-tk python3-pip
-
-# Install Python packages
-pip3 install -r requirements.txt
-
-# Optional: Get Hugging Face token for gated models
-# Visit https://huggingface.co/settings/tokens
+sudo apt-get install -y python3-tk python3-venv python3-dev build-essential
+chmod +x setup.sh
+./setup.sh
+source .venv/bin/activate
+python main.py
 ```
 
-### Configuration
+`models_config.json` controls GGUF downloads. Large model files are stored under `models/` and are intentionally not committed. The GGUF helper is available in `scripts/load_gguf.py`; the current Tkinter chat generation path in `main.py` uses Transformers, so the helper and GUI are not yet a unified GGUF chat backend.
 
-Create a `.env` file:
-```bash
-nano .env
-```
+### Other operating systems
 
-Add your Hugging Face token (optional, only for gated models):
-```
-HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxx
-HUGGINGFACE_API_KEY=your_api_key_here
-```
-
-Save with `Ctrl+X`, then `Y`, then `Enter`.
-
-### Running the App
+Create a virtual environment and use pip normally (do not use `--break-system-packages`):
 
 ```bash
-python3 main.py
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
----
+Install Tkinter through your operating system's package manager if it is missing.
 
-## 🎮 Usage
+## Configure and run
 
-1. **Launch the app** - `python3 main.py`
-2. **Accept the disclaimer** - Read and confirm terms
-3. **Select a model** - Choose from dropdown menu
-4. **Type your message** - Ask questions or give instructions
-5. **Send** - Click "SEND CHAT" button
-6. **View responses** - Scroll through chat history
+1. Copy `.env.example` to `.env` if it does not already exist.
+2. Add `HF_TOKEN` only if you need gated model access or Hugging Face router access. Keep the token private; do not commit `.env`.
+3. Launch the application with the same Python environment where the dependencies were installed:
 
-### Managing Models
-
-Click **"⚙️ Manage Models"** to:
-- Select which models to pre-install
-- View model specifications
-- Save configuration
-
-Models download automatically on first use.
-
----
-
-## ⚡ Performance Tips
-
-### For Slow Machines (8GB RAM)
-- Use **Phi-2** (fastest, smallest)
-- Keep other apps closed
-- Use shorter prompts
-- Expect 15-30 seconds per response
-
-### For Better Performance (16GB+ RAM)
-- Try **Falcon-7B** or **Mistral-7B**
-- Run multiple generations
-- Use longer, detailed prompts
-- Expect 10-20 seconds per response
-
-### Optimization
 ```bash
-# Set number of threads (adjust based on CPU cores)
-export OMP_NUM_THREADS=4
-
-# For NUMA systems
-export OPENBLAS_NUM_THREADS=4
-
-python3 main.py
+python main.py
 ```
 
----
+4. Accept the disclaimer, choose a configured model, enter a prompt, and select **SEND CHAT**. Use **Manage Models** to change the configured model list.
 
-## 📁 Project Structure
+Custom Hugging Face model IDs can be entered in the custom model field. The model must be compatible with Transformers' text-generation pipeline. Gated models require an authorized token.
 
-```
-huggingface-chat-app/
-├── main.py                 # Main application
-├── requirements.txt        # Python dependencies
-├── install.sh             # Installation script
-├── chat_history.json      # Auto-saved conversations
-├── models_config.json     # Model configuration
-├── .env                   # Environment variables
-└── README.md             # This file
-```
+## GGUF models
 
----
+The optional GGUF download workflow reads `models_config.json` and downloads entries marked `auto_install: true` when `./setup.sh` runs. `scripts/load_gguf.py` loads a downloaded file through `llama-cpp-python`; callers can pass `n_gpu_layers` and other supported `llama_cpp.Llama` options for their hardware. A compatible GPU-enabled `llama-cpp-python` build may require platform-specific installation rather than the default PyPI wheel.
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
-### "tkinter not found"
-```bash
-sudo apt-get install python3-tk
-```
+- **`tkinter` import error:** install the OS package, e.g. `sudo apt-get install python3-tk`.
+- **Cannot create `.venv`:** install `python3-venv` and the matching version-specific venv package on Debian/Kali.
+- **PEP 668 / externally-managed environment:** on Kali use `install.sh` or the explicit `pip3 install --break-system-packages -r requirements.txt` command; preferably use `setup.sh` to isolate dependencies.
+- **GGUF package/build errors:** `llama-cpp-python` may need a compiler toolchain and platform-specific GPU build settings. Check the package's installation guidance for your CUDA/Metal/CPU setup.
+- **Model download/auth errors:** check network access, repository ID/filename in `models_config.json`, and Hugging Face token permissions for gated repositories.
+- **Out of memory or slow generation:** use a smaller or more heavily quantized model, reduce context/generation length, or use a compatible GPU-backed runtime.
 
-### "Models won't download"
-- Check internet connection
-- Verify you have 50GB+ free space
-- Check firewall settings
+## Privacy
 
-### "Out of memory"
-- Use smaller models (Phi-2)
-- Close other applications
-- Increase swap space:
-  ```bash
-  sudo fallocate -l 4G /swapfile
-  sudo chmod 600 /swapfile
-  sudo mkswap /swapfile
-  sudo swapon /swapfile
-  ```
+Local Transformers and GGUF inference run on your machine. Hugging Face downloads and optional router requests require network access; router prompts and images are sent to the selected hosted provider. Review the model and provider terms before use.
 
-### "Slow responses"
-- This is normal on CPU - first run downloads model (5-30 min)
-- Subsequent runs use cached model (10-30 sec per response)
-- Shorter prompts = faster responses
+## Disclaimer
 
----
-
-## 🔐 Privacy & Security
-
-✅ **All inference runs locally** - no data sent to external servers
-✅ **Chat history saved locally** - only on your machine
-✅ **No telemetry** - app doesn't track usage
-✅ **Optional API key** - only for gated models on Hugging Face
-
----
-
-## 📊 System Requirements
-
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| CPU | Quad-core | 8+ cores |
-| RAM | 8GB | 16GB+ |
-| Storage | 50GB | 100GB+ |
-| Python | 3.8 | 3.10+ |
-
----
-
-## 🎨 UI Features
-
-- **Dark Terminal Theme** - Neon green text on black
-- **Skull & Crossbones** - ☠️ Safety warnings
-- **Model Info Display** - See specs before loading
-- **Real-time Status** - Know what's happening
-- **Scrollable Chat** - Full history with timestamps
-
----
-
-## 📝 Chat History
-
-Your conversations are automatically saved to `chat_history.json`:
-- Timestamps for each message
-- Model used for each response
-- Easy to backup or transfer
-
----
-
-## 🛠️ For Developers
-
-### Custom Model Addition
-
-Edit `AVAILABLE_MODELS` in `main.py`:
-```python
-AVAILABLE_MODELS = {
-    "Your-Model": {
-        "model_id": "huggingface/model-id",
-        "description": "Description here",
-        "size": "~5GB",
-        "ram": "~5GB"
-    },
-    # ... more models
-}
-```
-
-### Contributing
-
-Feel free to fork and submit pull requests!
-
----
-
-## ⚠️ Legal Notice
-
-This tool uses AI models that may generate unpredictable or harmful content. Users are responsible for:
-- Reviewing all AI-generated content
-- Complying with local laws and regulations
-- Respecting intellectual property rights
-- Using responsibly and ethically
-
-**The developer assumes NO liability for misuse.**
-
----
-
-## 📄 License
-
-MIT License - See LICENSE file for details
-
----
-
-## 🙏 Acknowledgments
-
-- Hugging Face for the Transformers library
-- Model creators: Microsoft, Apple, Meta, UAE, MosaicML
-- Kali Linux community
-
----
-
-**Made with ☠️ for penetration testers and ethical hackers**
-
-```
-    ☠️  ⚠️  USE AT YOUR OWN RISK  ⚠️  ☠️
-```
+Models can produce inaccurate or inappropriate output. Review generated content and comply with applicable laws and model/provider terms.

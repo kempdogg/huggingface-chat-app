@@ -1,24 +1,26 @@
-# Core Dependencies
+# Core application
 python-dotenv>=1.0.0
 requests>=2.31.0
+Pillow>=10.0.0
+openai>=1.0.0
+ollama>=0.1.0
 
-# Machine Learning & Model Loading
-torch>=2.5.0
+# Hugging Face model loading and downloads
+huggingface_hub>=0.20.0
 transformers>=4.36.0
 accelerate>=0.25.0
+torch>=2.5.0
 
-# Performance & Optimization
+# GGUF inference
+llama-cpp-python>=0.2.0
+
+# Numerical support
 numpy>=1.26.3
 scipy>=1.11.4
 
-# OpenAI API (for Hugging Face router)
-openai>=1.0.0
-
-# Image handling
-Pillow>=10.0.0
-
-# Ollama integration
-ollama>=0.1.0
-
-# Note: tkinter comes with Python on most systems
-# On Kali Linux, install with: sudo apt-get install python3-tk
+# Kali Linux note:
+# Do not put --break-system-packages on a requirement line. Use the pip option
+# when installing this file on Kali, for example:
+#   pip3 install --break-system-packages -r requirements.txt
+# The install.sh and setup.sh scripts apply the option automatically on Kali.
+# tkinter is provided by the OS package (Kali/Debian: sudo apt-get install python3-tk).
