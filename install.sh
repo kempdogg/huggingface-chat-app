@@ -1,19 +1,25 @@
 #!/bin/bash
 
 # Hugging Face Chat App Installation Script for Kali Linux
-# This script sets up the environment and installs all dependencies
+# This script creates an isolated virtual environment and installs dependencies
 
-set -e
+set -euo pipefail
 
 echo "╔════════════════════════════════════════════════════════╗"
 echo "║   ☠️  Hugging Face Chat App - Kali Linux Setup  ☠️    ║"
 echo "╚════════════════════════════════════════════════════════╝"
 echo ""
 
+# Optional: allow the explicit legacy system-wide pip mode
+BREAK_SYSTEM_PACKAGES=""
+if [[ "${1:-}" == "--break-system-packages" ]]; then
+    BREAK_SYSTEM_PACKAGES="--break-system-packages"
+fi
+
 # Check if running on Kali Linux
 if [ -f /etc/os-release ]; then
     . /etc/os-release
-    if [[ "$ID" != "kali" && "$ID_LIKE" != *"kali"* && "$ID_LIKE" != *"debian"* ]]; then
+    if [[ "${ID:-}" != "kali" && "${ID_LIKE:-}" != *"kali"* && "${ID_LIKE:-}" != *"debian"* ]]; then
         echo "⚠️  Warning: This script is optimized for Kali Linux"
         echo "   It may still work on Debian-based systems"
     fi
@@ -27,18 +33,22 @@ echo "Step 2: Installing system dependencies..."
 sudo apt-get install -y \
     python3-tk \
     python3-pip \
+    python3-venv \
     python3-dev \
     build-essential \
     git \
     || true
 
 echo ""
-echo "Step 3: Upgrading pip, setuptools, and wheel..."
-pip3 install --upgrade pip setuptools wheel
+echo "Step 3: Creating the Python virtual environment..."
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip setuptools wheel
 
 echo ""
 echo "Step 4: Installing Python dependencies..."
-pip3 install -r requirements.txt
+python -m pip install -r requirements.txt $BREAK_SYSTEM_PACKAGES
 
 echo ""
 echo "Step 5: Creating configuration files..."
@@ -70,8 +80,7 @@ fi
 echo ""
 echo "Step 6: Verifying installation..."
 
-# Test Python imports
-python3 << 'PYEOF'
+python << 'PYEOF'
 import sys
 print(f"✅ Python version: {sys.version}")
 
@@ -110,7 +119,9 @@ PYEOF
 echo ""
 echo "Step 7: Setting up permissions..."
 chmod +x main.py
-echo "✅ Made main.py executable"
+chmod +x setup.sh
+chmod +x install.sh
+echo "✅ Made scripts executable"
 
 echo ""
 echo "╔════════════════════════════════════════════════════════╗"
@@ -122,18 +133,18 @@ echo ""
 echo "1. Configure your Hugging Face token (optional):"
 echo "   nano .env"
 echo ""
-echo "2. Run the application:"
-echo "   python3 main.py"
+echo "2. Activate the virtual environment:"
+echo "   source .venv/bin/activate"
 echo ""
-echo "3. On first run:"
+echo "3. Run the application:"
+echo "   python main.py"
+echo ""
+echo "4. On first run:"
 echo "   - Accept the disclaimer"
 echo "   - Select models to download (click 'Manage Models')"
 echo "   - Models will download on first use (5-30 min depending on model)"
 echo ""
-echo "💡 Tips:"
-echo "   - Use Phi-2 for fastest performance on slow machines"
-echo "   - Keep other applications closed for better performance"
-echo "   - Models are cached after first download"
+echo "💡 Tip: To recreate the environment, remove .venv and rerun ./install.sh"
 echo ""
 echo "⚠️  Remember: Developer accepts NO liability for misuse!"
 echo ""
